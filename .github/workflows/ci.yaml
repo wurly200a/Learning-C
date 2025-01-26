@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   build-and-test:
@@ -35,11 +36,18 @@ jobs:
         done
 
     - name: Generate Coverage Report
+      id: coverage
       run: |
-        lcov --directory src --capture --output-file coverage.info
+        lcov --directory src --capture --rc lcov_branch_coverage=1 --output-file coverage.info
+        lcov --list coverage.info --list-full-path --rc lcov_branch_coverage=1
         genhtml coverage.info --output-directory coverage
-    - name: Upload Coverage Report
-      uses: actions/upload-artifact@v3
+
+    - name: Post Coverage to PR
+      if: github.event_name == 'pull_request'
+      uses: zgosalvez/github-actions-report-lcov@v3
       with:
-        name: coverage-report
-        path: coverage/
+        coverage-files: coverage.info
+        minimum-coverage: 0
+        artifact-name: code-coverage-report
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        update-comment: true
